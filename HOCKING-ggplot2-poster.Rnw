@@ -1,0 +1,72 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{fullpage}
+
+\begin{document}
+
+\begin{center}
+  \textbf{R+ggplot2+tikzDevice: multipanel, multicolor plots with
+  mathematical annotation}
+
+toby@sg.cs.titech.ac.jp \textbf{Toby Dylan Hocking} 8 March 2013
+\end{center}
+
+\thispagestyle{empty}
+
+On page 88 of my Ph.D. thesis, I showed that taking $\alpha=0.5$ in a
+certain penalty function results in aligned error curves, and optimal
+change-point detection. I show two plots of the same error curves
+below. If the data to plot can be saved as CSV, then it is simple to
+make plots like these. For more info, ask me or read my tutorial:
+
+\url{http://sugiyama-www.cs.titech.ac.jp/~toby/org/HOCKING-graphics-tutorial.html}
+
+<<setup,echo=FALSE,results='hide',message=FALSE,warnings=FALSE>>=
+works_with_R("3.0.2",ggplot2="0.9.3.1",tikzDevice="0.6.3")
+options(tikzDocumentDeclaration="\\documentclass[12pt]{article}",
+        tikzMetricsDictionary="tikzMetrics")
+load("signals.RData")
+
+curves <- do.call(rbind,lapply(seq_along(signals),function(signal){
+  sig <- signals[[signal]]
+  do.call(rbind,lapply(c(1,1/2,0),function(a){
+    error <- sig$lambda.error(a)
+    l.star <- sig$lambda.star(a)
+    lambda <- sig$lambda
+    optimal <- l.star == lambda
+    data.frame(error,lambda,alpha=a,signal=factor(signal),optimal)
+  }))
+}))
+
+optimal <- subset(curves, optimal)
+@ 
+
+<<one-row,dev='tikz',fig.height=1.7,tidy=FALSE>>=
+ggplot(, aes(log10(lambda), error))+
+  geom_line(aes(colour=signal, linetype=signal), data=curves, size=1.5)+
+  geom_point(aes(fill=signal), shape=21, data=optimal)+
+  facet_grid(.~alpha, labeller=function(var, val){
+    sprintf("$\\alpha=%s$", as.character(val))
+  })+
+  xlab("model complexity tradeoff parameter $\\log_{10}(\\lambda)$")+
+  ylab("error $E_i^\\alpha(\\lambda)$")
+@ 
+
+
+
+<<two-rows,dev='tikz',fig.height=2,tidy=FALSE>>=
+ggplot(, aes(log10(lambda), error))+
+  geom_line(data=curves, size=1.5)+
+  geom_point(data=optimal)+
+  facet_grid(signal~alpha, labeller=function(var, val){
+    var <- if(var=="alpha")"\\alpha" else "i"
+    sprintf("$%s=%s$", var, as.character(val))
+  })+
+  xlab("model complexity tradeoff parameter $\\log_{10}(\\lambda)$")+
+  ylab("error $E_i^\\alpha(\\lambda)$")
+@ 
+
+
+\end{document}
